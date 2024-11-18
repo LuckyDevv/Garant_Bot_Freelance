@@ -61,7 +61,7 @@ queries = {
 
 
 @bot.message_handler(content_types=['text'])
-def cmd10(message):
+def t1(message):
     command = message.text.split()[0]
     if command in commands:
         commands[command](message)
