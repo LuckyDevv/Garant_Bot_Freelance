@@ -1,0 +1,312 @@
+import sqlite3
+from sqlite3 import IntegrityError
+
+from telebot.apihelper import ApiTelegramException
+
+
+def get_normal_id(userid):
+    if type(userid) != int:
+        userid = 0
+    return str(userid)
+
+
+def get_normal_name(username):
+    if type(username) is not str:
+        username = ''
+    else:
+        if not username.startswith('@'):
+            username = f'@{username}'
+    return username
+
+
+def get_list(online_list, isset_text, empty_text):
+    result = ''
+    for user in online_list:
+        username = str(user[0])
+        link = ''
+        try:
+            username = str(int(username))
+            link = 'tg://user?id='
+        except ValueError:
+            if not username.startswith('@'):
+                link = '@'
+        prefix = user[1]
+        if type(prefix) is str and prefix.strip() != '':
+            result += link + username + ' | ' + prefix + '\n'
+        else:
+            result += link + username + '\n'
+    if result == '':
+        return empty_text
+    else:
+        return isset_text + result
+
+
+def get_user(username):
+    try:
+        userid = int(username)
+        return str(userid)
+    except ValueError:
+        return get_normal_name(username)
+
+
+def create_log(error):
+    if isinstance(error, ApiTelegramException):
+        log_text = f"Произошла ошибка Telegram Bot API в функции '{error.function_name}'. Код ошибки: '{error.error_code}'. Описание ошибки: '{error.description}'."
+        print(log_text)
+        with open("/home/luckydevv/ErrorLog.log", "a") as myfile:
+            myfile.write(log_text)
+            myfile.close()
+
+
+class DatabaseManager:
+    def __init__(self):
+        self.db = sqlite3.connect('/home/luckydevv/grant_bot/DataBase.sqlite3', check_same_thread=False)
+        self.cur = self.db.cursor()
+        self.cur.execute("CREATE TABLE IF NOT EXISTS `admins` (`username` TEXT PRIMARY KEY, `is_online` BOOLEAN, `prefix` TEXT);")
+        self.cur.execute("CREATE TABLE IF NOT EXISTS `broker` (`username` TEXT PRIMARY KEY, `is_online` BOOLEAN, `prefix` TEXT);")
+        self.cur.execute("CREATE TABLE IF NOT EXISTS `users` (`username` TEXT PRIMARY KEY, `chat_id` INTEGER);")
+        self.cur.execute("CREATE TABLE IF NOT EXISTS `bans` (`username` TEXT PRIMARY KEY, `reason` TEXT);")
+        self.cur.execute("CREATE TABLE IF NOT EXISTS `warns` (`username` TEXT PRIMARY KEY, `reason` TEXT, `count` INTEGER);")
+        self.db.commit()
+        self.owner_username = 'sky4arg'
+
+    def log_user(self, userid, username, chat_id):
+        username = get_normal_name(username)
+        if username == '':
+            username = get_normal_id(userid)
+        if self.cur.execute("SELECT 1 FROM `users` WHERE `username` = ?", (username,)).fetchone() is None:
+            self.cur.execute("INSERT INTO `users` VALUES (?, ?)", (username, chat_id))
+            self.db.commit()
+            return True
+        else:
+            return False
+
+    def is_broker(self, userid, username=None):
+        username = get_normal_name(username)
+        if self.is_owner(username):
+            return True
+        userid = get_normal_id(userid)
+        return self.cur.execute(f"SELECT 1 FROM `broker` WHERE `username`=? OR `username`=?", (username, userid)).fetchone() is not None
+
+    def get_online_brokers(self):
+        online = self.cur.execute("SELECT `username`,`prefix` FROM `broker` WHERE `is_online`=1").fetchall()
+        return get_list(online, 'Список гарантов онлайн:\n\n', 'Сейчас нет гарантов в онлайне')
+
+    def get_all_brokers(self):
+        all_list = self.cur.execute("SELECT `username`,`prefix` FROM `broker`;").fetchall()
+        return get_list(all_list, "Список всех гарантов:\n\n", "Список гарантов пуст!")
+
+    def set_broker(self, username, broker):
+        user = get_user(username)
+        try:
+            fetch_chat = self.cur.execute("SELECT `chat_id` FROM `users` WHERE `username`=?", (user,)).fetchone()
+            if fetch_chat is not None:
+                chat_id = fetch_chat[0]
+            else:
+                chat_id = 0
+            if broker:
+                self.cur.execute("INSERT INTO `broker` VALUES (?, FALSE, '');", (user,))
+                self.db.commit()
+                return ["yes", chat_id]
+            else:
+                if self.cur.execute(
+                        "SELECT 1 FROM `broker` WHERE `username`=?", (user,)).fetchone() is not None:
+                    self.cur.execute("DELETE FROM `broker` WHERE `username`=?;", (user,))
+                    self.db.commit()
+                    return ["yes", chat_id]
+                else:
+                    return ["no"]
+        except IntegrityError:
+            return ["no"]
+
+    def set_online_broker(self, userid, username, online):
+        username = get_normal_name(username)
+        if username == '':
+            username = get_normal_id(userid)
+        fetch = self.cur.execute("SELECT `is_online` FROM `broker` WHERE `username`=?", (username,)).fetchone()
+        if fetch is not None:
+            if fetch[0] != online:
+                self.cur.execute("UPDATE `broker` SET `is_online`=? WHERE `username`=?", (online, username))
+                self.db.commit()
+                return 0
+            else:
+                return -1
+        else:
+            return -2
+
+    def set_prefix_broker(self, username, prefix):
+        user = get_user(username)
+        if self.cur.execute("SELECT 1 FROM `broker` WHERE `username`=?", (user,)).fetchone() is not None:
+            self.cur.execute(f"UPDATE `broker` SET `prefix`=? WHERE `username`=?;", (prefix, user))
+            self.db.commit()
+            return True
+        else:
+            return False
+
+    def get_all_chat_id_brokers(self):
+        result = []
+        all_brokers = self.cur.execute("SELECT `username` FROM `broker`;").fetchall()
+        for user in all_brokers:
+            chat_id = self.cur.execute("SELECT `chat_id` FROM `users` WHERE `username`=?;", (user[0],)).fetchone()
+            if chat_id is not None and type(chat_id) == tuple and type(chat_id[0]) == int:
+                result.append(chat_id[0])
+        return result
+
+    def is_admin(self, userid, username=None):
+        username = get_normal_name(username)
+        if self.is_owner(username):
+            return True
+        userid = get_normal_id(userid)
+        return self.cur.execute(f"SELECT 1 FROM `admins` WHERE `username`=? OR `username`=?", (username, userid)).fetchone() is not None
+
+    def get_online_admins(self):
+        online = self.cur.execute("SELECT `username`,`prefix` FROM `admins` WHERE `is_online`=1").fetchall()
+        return get_list(online, 'Список админов онлайн:\n\n', 'Сейчас нет админов в онлайне')
+
+    def get_all_admins(self):
+        all_list = self.cur.execute("SELECT `username`,`prefix` FROM `admins`;").fetchall()
+        return get_list(all_list, "Список всех админов:\n\n", "Список админов пуст!")
+
+    def set_admin(self, username, admin):
+        user = get_user(username)
+        try:
+            fetch_chat = self.cur.execute("SELECT `chat_id` FROM `users` WHERE `username`=?", (user,)).fetchone()
+            if fetch_chat is not None:
+                chat_id = fetch_chat[0]
+            else:
+                chat_id = 0
+            if admin:
+                self.cur.execute(f"INSERT INTO `admins` VALUES (?, FALSE, '');", (user,))
+                self.db.commit()
+                return ["yes", chat_id]
+            else:
+                if self.cur.execute(f"SELECT 1 FROM `admins` WHERE `username`=?", (user,)).fetchone() is not None:
+                    self.cur.execute(f"DELETE FROM `admins` WHERE `username`=?;", (user,))
+                    self.db.commit()
+                    return ["yes", chat_id]
+                else:
+                    return ["no"]
+        except IntegrityError:
+            return ["no"]
+
+    def set_online_admin(self, userid, username, online):
+        username = get_normal_name(username)
+        if username == '':
+            username = get_normal_id(userid)
+        fetch = self.cur.execute("SELECT `is_online` FROM `admins` WHERE `username`=?", (username,)).fetchone()
+        if fetch is not None:
+            if fetch[0] != online:
+                self.cur.execute("UPDATE `admins` SET `is_online`=? WHERE `username`=?", (online, username))
+                self.db.commit()
+                return 0
+            else:
+                return -1
+        else:
+            return -2
+
+    def set_prefix_admin(self, username, prefix):
+        user = get_user(username)
+        if self.cur.execute("SELECT 1 FROM `admins` WHERE `username`=?", (user,)).fetchone() is not None:
+            self.cur.execute(f"UPDATE `admins` SET `prefix`=? WHERE `username`=?;", (prefix, user))
+            self.db.commit()
+            return True
+        else:
+            return False
+
+    def ban_user(self, username, reason):
+        user = get_user(username)
+        try:
+            self.cur.execute("INSERT INTO `bans` VALUES (?,?);", (user, reason))
+            self.db.commit()
+            fetch_chat = self.cur.execute("SELECT `chat_id` FROM `users` WHERE `username`=?", (user,)).fetchone()
+            if fetch_chat is not None:
+                chat_id = fetch_chat[0]
+            else:
+                chat_id = 0
+            return ["yes", chat_id]
+        except IntegrityError:
+            return ["no"]
+
+    def unban_user(self, username):
+        user = get_user(username)
+        if self.cur.execute("SELECT 1 FROM `bans` WHERE `username`=?", (user,)).fetchone() is not None:
+            self.cur.execute("DELETE FROM `bans` WHERE `username`=?;", (user,))
+            self.cur.execute("DELETE FROM `warns` WHERE `username`=? AND `count`=3;", (user,))
+            self.db.commit()
+            fetch_chat = self.cur.execute("SELECT `chat_id` FROM `users` WHERE `username`=?", (user,)).fetchone()
+            if fetch_chat is not None:
+                chat_id = fetch_chat[0]
+            else:
+                chat_id = 0
+            return ["yes", chat_id]
+        else:
+            return ["no"]
+
+    def is_banned(self, userid, username):
+        username = get_normal_name(username)
+        if self.is_owner(username):
+            return False
+        userid = get_normal_id(userid)
+        return self.cur.execute(f"SELECT 1 FROM `bans` WHERE `username`=? OR `username`=?",(username, userid)).fetchone() is not None
+
+    def warn_user(self, username, reason):
+        user = get_user(username)
+        fetch = self.cur.execute("SELECT `count`,`reason` FROM `warns` WHERE `username`=?", (user,)).fetchone()
+        fetch_chat = self.cur.execute("SELECT `chat_id` FROM `users` WHERE `username`=?", (user,)).fetchone()
+        if fetch_chat is not None:
+            chat_id = fetch_chat[0]
+        else:
+            chat_id = 0
+        if fetch is not None:
+            if fetch[0] == 3:
+                return ["banned"]
+            count = fetch[0]+1
+            self.cur.execute("UPDATE `warns` SET `count`=?, `reason`=? WHERE `username`=?;", (count, reason, user))
+            self.db.commit()
+            if fetch[0] == 2:
+                try:
+                    self.cur.execute("INSERT INTO `bans` VALUES (?,?);", (user, reason))
+                    self.db.commit()
+                except IntegrityError:
+                    pass
+                return ["ban", 3, chat_id]
+            else:
+                return ["warn", count, chat_id]
+        else:
+            self.cur.execute("INSERT INTO `warns` VALUES (?,?,?);", (user,reason,1))
+            self.db.commit()
+            return ["warn", 1, chat_id]
+
+    def unwarn_user(self, username):
+        user = get_user(username)
+        result = self.cur.execute("SELECT `count` FROM `warns` WHERE `username`=?", (user,)).fetchone()
+        if result is not None:
+            fetch_chat = self.cur.execute("SELECT `chat_id` FROM `users` WHERE `username`=?", (user,)).fetchone()
+            if fetch_chat is not None:
+                chat_id = fetch_chat[0]
+            else:
+                chat_id = 0
+            if result[0] == 1:
+                self.cur.execute("DELETE FROM `warns` WHERE `username`=?;", (user,))
+                self.db.commit()
+                return ["yes", chat_id, 0]
+            elif result[0] == 3:
+                return ["banned"]
+            elif result[0] == 2:
+                self.cur.execute("UPDATE `warns` SET `count`=1 WHERE `username`=?;", (user,))
+                self.db.commit()
+                return ["yes", chat_id, 1]
+            else:
+                return ["no"]
+        else:
+            return ["no"]
+
+    def is_owner(self, username):
+        return username == self.owner_username
+
+    def get_user_tgname(self, username):
+        try:
+            userid = int(username)
+            return "tg://user?id={}".format(userid)
+        except ValueError:
+            return get_normal_name(username)
