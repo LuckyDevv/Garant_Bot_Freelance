@@ -7,33 +7,40 @@ from QueryHandler import QueryHandler
 import atexit
 
 
-TOKEN = '7579498106:AAGbTmMeeP9JrbWTMUFIr8a6kDl9xmprQDo'  # Введите сюда токен своего Telegram-бота
+TOKEN = "7579498106:AAGbTmMeeP9JrbWTMUFIr8a6kDl9xmprQDo"  # Введите сюда токен своего Telegram-бота
 bot = telebot.TeleBot(TOKEN)
 bot.set_webhook()
 Initializer.create_dirs()
 
 
-def exit_log():
-    exit_text = "Скрипт завершил свою работу в "+strftime("%Y-%m-%d %H:%M:%S", gmtime())
-    print(exit_text)
-    with open("/home/luckydevv/ErrorLog.log", "a") as myfile:
-        myfile.write(exit_text)
+def msg_log(message):
+    print(message)
+    with open("/home/luckydevv/broker_bot/Work.log", "a") as myfile:
+        myfile.write(message)
         myfile.close()
         try:
-            bot.send_message(1199296238, exit_text)
+            bot.send_message(1199296238, message)
         except:
             pass
 
 
-atexit.register(exit_log)
+atexit.register(
+    msg_log,
+    "Скрипт завершил свою работу в " + strftime("%d.%m.%Y %H:%M:%S", gmtime()),
+)
+msg_log("Скрипт запущен в " + strftime("%d.%m.%Y %H:%M:%S", gmtime()))
 
-user_keyboard = Initializer.get_keyboard('user')
-broker_keyboard = Initializer.get_keyboard('broker')
-admin_keyboard = Initializer.get_keyboard('admin')
+user_keyboard = Initializer.get_keyboard("user")
+broker_keyboard = Initializer.get_keyboard("broker")
+admin_keyboard = Initializer.get_keyboard("admin")
 
 database_manager = DatabaseManager()
-command_handler = CommandHandler(bot, database_manager, user_keyboard, broker_keyboard, admin_keyboard)
-query_handler = QueryHandler(bot, database_manager, user_keyboard, broker_keyboard, admin_keyboard)
+command_handler = CommandHandler(
+    bot, database_manager, user_keyboard, broker_keyboard, admin_keyboard
+)
+query_handler = QueryHandler(
+    bot, database_manager, user_keyboard, broker_keyboard, admin_keyboard
+)
 
 commands = {
     "/add_broker": command_handler.add_broker,
@@ -45,7 +52,7 @@ commands = {
     "/warn": command_handler.warn_user,
     "/mail": command_handler.mail_send,
     "/unban": command_handler.unban_user,
-    "/unwarn": command_handler.unwarn_user
+    "/unwarn": command_handler.unwarn_user,
 }
 
 queries = {
@@ -60,7 +67,7 @@ queries = {
 }
 
 
-@bot.message_handler(content_types=['text'])
+@bot.message_handler(content_types=["text"])
 def t1(message):
     command = message.text.split()[0]
     if command in commands:
