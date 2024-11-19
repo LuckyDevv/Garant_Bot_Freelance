@@ -272,7 +272,7 @@ class CommandHandler:
                             username_2 = f'tg://user?id={userid}'
                         else:
                             username_2 = f'@{username}'
-                        self.bot.send_message(result[1], f'Администратор {username_2} снял с вам предупреждение! Теперь у вас {result[2]}/3 предупреждений!')
+                        self.bot.send_message(result[1], f'Администратор {username_2} снял с ваc предупреждение! Теперь у вас {result[2]}/3 предупреждений!')
                     except ApiTelegramException as e:
                         DatabaseManager.create_log(e)
                 elif result[0] == "no":
