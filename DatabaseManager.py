@@ -459,3 +459,16 @@ class DatabaseManager:
             return "tg://user?id={}".format(userid)
         except ValueError:
             return get_normal_name(username)
+
+    def get_normal_id(self, userid):
+        if type(userid) != int:
+            userid = 0
+        return str(userid)
+
+    def get_normal_name(self, username):
+        if type(username) is not str:
+            username = ""
+        else:
+            if not username.startswith("@"):
+                username = f"@{username}"
+        return username

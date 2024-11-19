@@ -4,10 +4,10 @@ import DatabaseManager
 
 
 class CommandHandler:
-    def __init__(self, bot, manager_db, user_kb, grant_kb, admin_kb):
+    def __init__(self, bot, manager_db, user_kb, grant_kb, admin_kb, ab_kb):
         self.bot = bot
         self.manager_db = manager_db
-        self.keyboards = [user_kb, grant_kb, admin_kb]
+        self.keyboards = [user_kb, grant_kb, admin_kb, ab_kb]
 
     def add_broker(self, message):
         username = message.from_user.username
@@ -25,13 +25,12 @@ class CommandHandler:
                         "Вы успешно добавили гаранта "
                         + self.manager_db.get_user_tgname(user)
                         + " в список гарантов!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                     try:
-                        print(result[1])
                         self.bot.send_message(
                             result[1],
-                            "Вас назначили от должности гаранта!",
+                            "Вас назначили на должность гаранта!",
                             reply_markup=self.keyboards[1],
                         )
                     except ApiTelegramException as e:
@@ -40,13 +39,13 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         "Этот гарант уже находится в списке гарантов!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/add_broker [id|@]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
         else:
@@ -74,10 +73,9 @@ class CommandHandler:
                         "Вы успешно удалили гаранта "
                         + self.manager_db.get_user_tgname(user)
                         + " из списка гарантов!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                     try:
-                        print(result[1])
                         self.bot.send_message(
                             result[1],
                             "Вас отстранили от должности гаранта!",
@@ -89,13 +87,13 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         "Этот гарант не находится в списке гарантов!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/remove_broker [id|@]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
         else:
@@ -120,13 +118,13 @@ class CommandHandler:
                         "Вы успешно добавили админа "
                         + self.manager_db.get_user_tgname(user)
                         + " в список админов!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3],
                     )
                     try:
                         self.bot.send_message(
                             result[1],
-                            "Вас назначили от должности админа!",
-                            reply_markup=self.keyboards[2],
+                            "Вас назначили на должность админа!",
+                            reply_markup=self.keyboards[2] if self.manager_db.is_broker(username, username) else self.keyboards[3],
                         )
                     except ApiTelegramException as e:
                         DatabaseManager.create_log(e)
@@ -134,13 +132,13 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         "Этот админ уже находится в списке админов!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3],
                     )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/add_admin [id|@]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3],
                     parse_mode="Markdown",
                 )
         else:
@@ -167,13 +165,13 @@ class CommandHandler:
                         "Вы успешно удалили админа "
                         + self.manager_db.get_user_tgname(user)
                         + " из списка админов!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3],
                     )
                     try:
                         self.bot.send_message(
                             result[1],
                             "Вас отстранили от должности админа!",
-                            reply_markup=self.keyboards[0],
+                            reply_markup=self.keyboards[1] if self.manager_db.is_broker(username, username) else self.keyboards[0],
                         )
                     except ApiTelegramException as e:
                         DatabaseManager.create_log(e)
@@ -181,13 +179,13 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         "Этот админ не находится в списке админов!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3],
                     )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/remove_admin [id|@]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3],
                     parse_mode="Markdown",
                 )
         else:
@@ -206,29 +204,60 @@ class CommandHandler:
             return
         if self.manager_db.is_admin(userid, username):
             text = str(message.text).split(" ")
-            if len(text) >= 3:
-                user = text[1].strip()
-                prefix = text[2].strip()
-                if self.manager_db.set_prefix_broker(user, prefix):
-                    self.bot.send_message(
-                        message.chat.id,
-                        "Вы успешно установили префикс гаранту "
-                        + self.manager_db.get_user_tgname(user)
-                        + " - "
-                        + prefix,
-                        reply_markup=self.keyboards[2],
-                    )
+            if len(text) >= 4:
+                prefix_type = text[1].strip()
+                user = text[2].strip()
+                prefix = text[3].strip()
+                if prefix_type == "0":
+                    if self.manager_db.set_prefix_broker(user, prefix):
+                        self.bot.send_message(
+                            message.chat.id,
+                            "Вы успешно установили префикс гаранту "
+                            + self.manager_db.get_user_tgname(user)
+                            + " - "
+                            + prefix,
+                            reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
+                        )
+                    else:
+                        self.bot.send_message(
+                            message.chat.id,
+                            "Пользователь не является гарантом!",
+                            reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
+                        )
+                elif prefix_type == "1":
+                    if not self.manager_db.is_owner(username):
+                        self.bot.send_message(
+                            message.chat.id,
+                            "У вас недостаточно прав!",
+                            reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
+                        )
+                        return
+                    if self.manager_db.set_prefix_admin(user, prefix):
+                        self.bot.send_message(
+                            message.chat.id,
+                            "Вы успешно установили префикс админу "
+                            + self.manager_db.get_user_tgname(user)
+                            + " - "
+                            + prefix,
+                            reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
+                        )
+                    else:
+                        self.bot.send_message(
+                            message.chat.id,
+                            "Пользователь не является админом!",
+                            reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
+                        )
                 else:
                     self.bot.send_message(
                         message.chat.id,
-                        "Пользователь не является гарантом!",
-                        reply_markup=self.keyboards[2],
+                        "Неизвестный тип операции!",
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/set_prefix [id|@] [prefix]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
         else:
@@ -253,7 +282,7 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         f"Нельзя заблокировать самого себя!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                     return
                 reason = " ".join(text[2:]).strip()
@@ -262,7 +291,7 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         f'Вы успешно заблокировали пользователя {self.manager_db.get_user_tgname(user)} по причине "{reason}"!',
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                     try:
                         if type(username) != str:
@@ -279,13 +308,13 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         f"Пользователь {username} уже находится в блокировке!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/ban [id|@] [причина]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
         else:
@@ -311,7 +340,7 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         f"Вы успешно разблокировали пользователя {self.manager_db.get_user_tgname(user)}!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                     try:
                         if type(username) != str:
@@ -328,13 +357,13 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         f"Пользователь {user} не находится в блокировке!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/unban [id|@]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
         else:
@@ -359,7 +388,7 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         f"Нельзя выдать предупреждение самому себе!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                     return
                 reason = " ".join(text[2:]).strip()
@@ -368,7 +397,7 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         "Данный пользователь уже заблокирован!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                     return
                 text_send = f'Вы успешно выдали предупреждение ({result[1]}/3) пользователю {self.manager_db.get_user_tgname(user)} по причине "{reason}"!'
@@ -397,13 +426,13 @@ class CommandHandler:
                 else:
                     text_send += "\n\nК сожалению, не удалось отправить уведомление пользователю, поскольку он никогда не писал боту."
                 self.bot.send_message(
-                    message.chat.id, text_send, reply_markup=self.keyboards[2]
+                    message.chat.id, text_send, reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2]
                 )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/warn [id|@] [причина]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
         else:
@@ -429,13 +458,13 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         "Невозможно снять предупреждение, поскольку пользователь заблокирован!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                 elif result[0] == "yes":
                     self.bot.send_message(
                         message.chat.id,
                         f"Предупреждение с пользователя {self.manager_db.get_user_tgname(user)} успешно снято! Теперь у него {result[2]}/3 предупреждений!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                     try:
                         if type(username) != str:
@@ -452,13 +481,13 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         "У пользователя нет активных предупреждений!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/unwarn [id|@]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
         else:
@@ -509,19 +538,19 @@ class CommandHandler:
                     self.bot.send_message(
                         message.chat.id,
                         text_send,
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                 else:
                     self.bot.send_message(
                         message.chat.id,
                         "Список пользователей, которым может быть разослано сообщение, пуст!",
-                        reply_markup=self.keyboards[2],
+                        reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
             else:
                 self.bot.send_message(
                     message.chat.id,
                     "Вы не ввели все параметры! Использование: `/mail [текст]`",
-                    reply_markup=self.keyboards[2],
+                    reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                 )
         else:
             self.send_no_access(
@@ -542,7 +571,7 @@ class CommandHandler:
             self.bot.send_message(
                 message.chat.id,
                 "Выберите действие:",
-                reply_markup=self.keyboards[2],
+                reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
             )
         elif self.manager_db.is_broker(userid, username):
             self.bot.send_message(

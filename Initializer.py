@@ -62,6 +62,42 @@ def get_keyboard(kb_type):
                 ),
             )
         )
+    elif kb_type == "admin_broker":
+        return (
+            InlineKeyboardMarkup()
+            .add(
+                InlineKeyboardButton(
+                    "Список онлайн гарантов", callback_data="broker_online_list"
+                ),
+                InlineKeyboardButton(
+                    "Список всех гарантов", callback_data="broker_all_list"
+                ),
+            )
+            .add(
+                InlineKeyboardButton(
+                    "Список онлайн админов", callback_data="admin_online_list"
+                ),
+                InlineKeyboardButton(
+                    "Список всех админов", callback_data="admin_all_list"
+                ),
+            )
+            .add(
+                InlineKeyboardButton(
+                    "Я онлайн (Админ)", callback_data="admin_online"
+                ),
+                InlineKeyboardButton(
+                    "Я оффлайн (Админ)", callback_data="admin_offline"
+                ),
+            )
+            .add(
+                InlineKeyboardButton(
+                    "Я онлайн (Гарант)", callback_data="broker_online"
+                ),
+                InlineKeyboardButton(
+                    "Я оффлайн (Гарант)", callback_data="broker_offline"
+                ),
+            )
+        )
 
 
 def create_dirs():

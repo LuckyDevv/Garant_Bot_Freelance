@@ -33,13 +33,14 @@ msg_log("Скрипт запущен в " + strftime("%d.%m.%Y %H:%M:%S", gmtime
 user_keyboard = Initializer.get_keyboard("user")
 broker_keyboard = Initializer.get_keyboard("broker")
 admin_keyboard = Initializer.get_keyboard("admin")
+ab_keyboard = Initializer.get_keyboard("admin_broker")
 
 database_manager = DatabaseManager()
 command_handler = CommandHandler(
-    bot, database_manager, user_keyboard, broker_keyboard, admin_keyboard
+    bot, database_manager, user_keyboard, broker_keyboard, admin_keyboard, ab_keyboard
 )
 query_handler = QueryHandler(
-    bot, database_manager, user_keyboard, broker_keyboard, admin_keyboard
+    bot, database_manager, user_keyboard, broker_keyboard, admin_keyboard, ab_keyboard
 )
 
 commands = {

@@ -4,17 +4,17 @@ import DatabaseManager
 
 
 class QueryHandler:
-    def __init__(self, bot, manager_db, user_kb, grant_kb, admin_kb):
+    def __init__(self, bot, manager_db, user_kb, grant_kb, admin_kb, ab_kb):
         self.bot = bot
         self.manager_db = manager_db
-        self.keyboards = [user_kb, grant_kb, admin_kb]
+        self.keyboards = [user_kb, grant_kb, admin_kb, ab_kb]
 
     def broker_online_list(self, call, userid, username):
         result = self.manager_db.get_online_brokers()
         self.bot.answer_callback_query(call.id)
         if self.manager_db.is_admin(userid, username):
             self.send_keyboard(
-                self.keyboards[2],
+                self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                 call.message.message_id,
                 call.message.chat.id,
                 result,
@@ -38,7 +38,7 @@ class QueryHandler:
         self.bot.answer_callback_query(call.id)
         if self.manager_db.is_admin(userid, username):
             self.send_keyboard(
-                self.keyboards[2],
+                self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                 call.message.message_id,
                 call.message.chat.id,
                 self.manager_db.get_all_brokers(),
@@ -53,14 +53,14 @@ class QueryHandler:
         self.bot.answer_callback_query(call.id)
         if result == 0:
             self.send_keyboard(
-                self.keyboards[1],
+                self.keyboards[3] if self.manager_db.is_admin(userid, username) else self.keyboards[1],
                 call.message.message_id,
                 call.message.chat.id,
                 "Вы успешно вошли в онлайн!",
             )
         elif result == -1:
             self.send_keyboard(
-                self.keyboards[1],
+                self.keyboards[3] if self.manager_db.is_admin(userid, username) else self.keyboards[1],
                 call.message.message_id,
                 call.message.chat.id,
                 "Вы уже онлайн!",
@@ -68,7 +68,7 @@ class QueryHandler:
         else:
             if self.manager_db.is_admin(userid, username):
                 self.send_keyboard(
-                    self.keyboards[2],
+                    self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     call.message.message_id,
                     call.message.chat.id,
                     "У вас нет доступа к этой команде!",
@@ -86,14 +86,14 @@ class QueryHandler:
         self.bot.answer_callback_query(call.id)
         if result == 0:
             self.send_keyboard(
-                self.keyboards[1],
+                self.keyboards[3] if self.manager_db.is_admin(userid, username) else self.keyboards[1],
                 call.message.message_id,
                 call.message.chat.id,
                 "Вы успешно ушли в оффлайн!",
             )
         elif result == -1:
             self.send_keyboard(
-                self.keyboards[1],
+                self.keyboards[3] if self.manager_db.is_admin(userid, username) else self.keyboards[1],
                 call.message.message_id,
                 call.message.chat.id,
                 "Вы уже оффлайн!",
@@ -101,7 +101,7 @@ class QueryHandler:
         else:
             if self.manager_db.is_admin(userid, username):
                 self.send_keyboard(
-                    self.keyboards[2],
+                    self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     call.message.message_id,
                     call.message.chat.id,
                     "У вас нет доступа к этой команде!",
@@ -119,7 +119,7 @@ class QueryHandler:
         self.bot.answer_callback_query(call.id)
         if self.manager_db.is_admin(userid, username):
             self.send_keyboard(
-                self.keyboards[2],
+                self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                 call.message.message_id,
                 call.message.chat.id,
                 result,
@@ -143,7 +143,7 @@ class QueryHandler:
         self.bot.answer_callback_query(call.id)
         if self.manager_db.is_admin(userid, username):
             self.send_keyboard(
-                self.keyboards[2],
+                self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                 call.message.message_id,
                 call.message.chat.id,
                 self.manager_db.get_all_admins(),
@@ -158,14 +158,14 @@ class QueryHandler:
         self.bot.answer_callback_query(call.id)
         if result == 0:
             self.send_keyboard(
-                self.keyboards[2],
+                self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                 call.message.message_id,
                 call.message.chat.id,
                 "Вы успешно вошли в онлайн!",
             )
         elif result == -1:
             self.send_keyboard(
-                self.keyboards[2],
+                self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                 call.message.message_id,
                 call.message.chat.id,
                 "Вы уже онлайн!",
@@ -191,14 +191,14 @@ class QueryHandler:
         self.bot.answer_callback_query(call.id)
         if result == 0:
             self.send_keyboard(
-                self.keyboards[2],
+                self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                 call.message.message_id,
                 call.message.chat.id,
                 "Вы успешно ушли в оффлайн!",
             )
         elif result == -1:
             self.send_keyboard(
-                self.keyboards[2],
+                self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                 call.message.message_id,
                 call.message.chat.id,
                 "Вы уже оффлайн!",
