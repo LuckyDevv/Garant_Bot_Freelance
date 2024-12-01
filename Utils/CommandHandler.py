@@ -1,6 +1,6 @@
 from telebot.apihelper import ApiTelegramException
 
-import DatabaseManager
+from Utils import DatabaseManager
 
 
 class CommandHandler:
@@ -115,15 +115,15 @@ class CommandHandler:
                 if result[0] == "yes":
                     self.bot.send_message(
                         message.chat.id,
-                        "Вы успешно добавили админа "
+                        "Вы успешно добавили администратора "
                         + self.manager_db.get_user_tgname(user)
-                        + " в список админов!",
+                        + " в список администраторов!",
                         reply_markup=self.keyboards[3],
                     )
                     try:
                         self.bot.send_message(
                             result[1],
-                            "Вас назначили на должность админа!",
+                            "Вас назначили на должность администратора!",
                             reply_markup=self.keyboards[2] if self.manager_db.is_broker(username, username) else self.keyboards[3],
                         )
                     except ApiTelegramException as e:
@@ -131,7 +131,7 @@ class CommandHandler:
                 else:
                     self.bot.send_message(
                         message.chat.id,
-                        "Этот админ уже находится в списке админов!",
+                        "Этот администратор уже находится в списке администраторов!",
                         reply_markup=self.keyboards[3],
                     )
             else:
@@ -162,15 +162,15 @@ class CommandHandler:
                 if result[0] == "yes":
                     self.bot.send_message(
                         message.chat.id,
-                        "Вы успешно удалили админа "
+                        "Вы успешно удалили администратора "
                         + self.manager_db.get_user_tgname(user)
-                        + " из списка админов!",
+                        + " из списка администраторов!",
                         reply_markup=self.keyboards[3],
                     )
                     try:
                         self.bot.send_message(
                             result[1],
-                            "Вас отстранили от должности админа!",
+                            "Вас отстранили от должности администратора!",
                             reply_markup=self.keyboards[1] if self.manager_db.is_broker(username, username) else self.keyboards[0],
                         )
                     except ApiTelegramException as e:
@@ -178,7 +178,7 @@ class CommandHandler:
                 else:
                     self.bot.send_message(
                         message.chat.id,
-                        "Этот админ не находится в списке админов!",
+                        "Этот администратор не находится в списке администраторов!",
                         reply_markup=self.keyboards[3],
                     )
             else:
@@ -212,7 +212,7 @@ class CommandHandler:
                     if self.manager_db.set_prefix_broker(user, prefix):
                         self.bot.send_message(
                             message.chat.id,
-                            "Вы успешно установили префикс гаранту "
+                            "Вы успешно установили префикс для гаранта "
                             + self.manager_db.get_user_tgname(user)
                             + " - "
                             + prefix,
@@ -235,7 +235,7 @@ class CommandHandler:
                     if self.manager_db.set_prefix_admin(user, prefix):
                         self.bot.send_message(
                             message.chat.id,
-                            "Вы успешно установили префикс админу "
+                            "Вы успешно установили префикс для администратора "
                             + self.manager_db.get_user_tgname(user)
                             + " - "
                             + prefix,
@@ -244,7 +244,7 @@ class CommandHandler:
                     else:
                         self.bot.send_message(
                             message.chat.id,
-                            "Пользователь не является админом!",
+                            "Пользователь не является администратором!",
                             reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                         )
                 else:
@@ -400,19 +400,19 @@ class CommandHandler:
                         reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                     return
-                text_send = f'Вы успешно выдали предупреждение ({result[1]}/3) пользователю {self.manager_db.get_user_tgname(user)} по причине "{reason}"!'
+                text_send = f'Вы успешно выдали предупреждение ({result[1]} из 3) пользователю {self.manager_db.get_user_tgname(user)} по причине "{reason}"!'
                 if result[0] == "ban":
-                    text_send += "\n\nИз-за того, что пользователь набрал 3/3 предупреждений, он был заблокирован!"
+                    text_send += "\n\nИз-за того, что пользователь получил 3 из 3 предупреждений, он был заблокирован!"
                 if result[2] != 0:
                     if type(username) != str:
                         username_2 = f"tg://user?id={userid}"
                     else:
                         username_2 = f"@{username}"
-                    text_send_user = f'Вы получили предупреждение ({result[1]}/3) от администратора {username_2}! Причина: "{reason}".'
+                    text_send_user = f'Вы получили предупреждение ({result[1]} из 3) от администратора {username_2}! Причина: "{reason}".'
                     if result[0] == "warn":
-                        text_send_user += "\n\nЕсли вы наберете 3/3 предупреждений, то будете заблокированы в боте!"
+                        text_send_user += "\n\nЕсли вы получите 3 из 3 предупреждений, то будете заблокированы в боте!"
                     elif result[0] == "ban":
-                        text_send_user += "\n\nПоскольку вы набрали 3/3 предупреждений, вы были заблокированы в боте!"
+                        text_send_user += "\n\nПоскольку вы получили 3 из 3 предупреждений, вы были заблокированы в боте!"
                     try:
                         self.bot.send_message(
                             result[2], text_send_user, parse_mode="Markdown"
@@ -422,9 +422,9 @@ class CommandHandler:
                         )
                     except ApiTelegramException as e:
                         DatabaseManager.create_log(e)
-                        text_send += "\n\nК сожалению, не удалось отправить уведомление пользователю, поскольку он заблокировал бота."
+                        text_send += "\n\nК сожалению, не удалось отправить уведомление пользователю, так как он заблокировал бота."
                 else:
-                    text_send += "\n\nК сожалению, не удалось отправить уведомление пользователю, поскольку он никогда не писал боту."
+                    text_send += "\n\nК сожалению, не удалось отправить уведомление пользователю, так как он никогда не обращался к боту."
                 self.bot.send_message(
                     message.chat.id, text_send, reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2]
                 )
@@ -457,7 +457,7 @@ class CommandHandler:
                 if result[0] == "banned":
                     self.bot.send_message(
                         message.chat.id,
-                        "Невозможно снять предупреждение, поскольку пользователь заблокирован!",
+                        "Невозможно снять предупреждение, так как пользователь заблокирован!",
                         reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
                 elif result[0] == "yes":
@@ -543,7 +543,7 @@ class CommandHandler:
                 else:
                     self.bot.send_message(
                         message.chat.id,
-                        "Список пользователей, которым может быть разослано сообщение, пуст!",
+                        "Список пользователей, которым можно разослать сообщение, пуст!",
                         reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
             else:
@@ -560,6 +560,43 @@ class CommandHandler:
                 message.from_user.id,
                 False,
             )
+
+    def set_link(self, message):
+        userid = message.from_user.id
+        username = message.from_user.username
+        if self.manager_db.is_banned(userid, username):
+            return
+        if self.manager_db.is_broker(userid, username):
+            link = str(message.text).split(' ')
+            if len(link) >= 2:
+                link = link[1]
+                if link.startswith("t.me") or link.startswith("https://t.me") or link.startswith("@"):
+                    self.manager_db.set_link_broker(userid, username, link)
+                    self.bot.send_message(
+                        message.chat.id,
+                        "Вы успешно установили свою ссылку на канал с отзывами!"
+                    )
+                else:
+                    self.bot.send_message(
+                        message.chat.id,
+                        "Ссылка на канал с отзывами должна начинаться с t.me/, https://t.me или с @!",
+                        disable_web_page_preview=True
+                    )
+            else:
+                self.bot.send_message(
+                    message.chat.id,
+                    "Вы не ввели все параметры! Использование: `/set_link [параметры]`",
+                    parse_mode="Markdown",
+                )
+        else:
+            self.send_no_access(
+                message.chat.id,
+                message.message_id,
+                username,
+                message.from_user.id,
+                True,
+            )
+
 
     def handle_text(self, message):
         userid = message.from_user.id
@@ -593,11 +630,51 @@ class CommandHandler:
                 message_id=message_id,
                 text=text,
                 reply_markup=keyboard,
+                disable_web_page_preview=True
             )
         except ApiTelegramException as e:
             DatabaseManager.create_log(e)
             if e.error_code != 400:
-                self.bot.send_message(chat_id, text, reply_markup=keyboard)
+                self.bot.send_message(chat_id, text, reply_markup=keyboard, disable_web_page_preview=True)
+
+    def chat_kick(self, message):
+        if self.manager_db.is_admin(message.from_user.id, message.from_user.username):
+            if message.reply_to_message is not None:
+                if self.bot.bot_id != message.reply_to_message.from_user.id:
+                    if self.bot.get_chat_member(message.chat.id, message.reply_to_message.from_user.id).status == 'member':
+                        try:
+                            self.bot.unban_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+                            self.bot.reply_to(message, "Пользователь был выгнан из группы!")
+                        except ApiTelegramException:
+                            self.bot.reply_to(message, "Я не назначен администратором, чтобы выполнить это действие!")
+                    else:
+                        self.bot.reply_to(message, "Пользователь не является участником группы!")
+
+    def chat_ban(self, message):
+        if self.manager_db.is_admin(message.from_user.id, message.from_user.username):
+            if message.reply_to_message is not None:
+                if self.bot.bot_id != message.reply_to_message.from_user.id:
+                    if self.bot.get_chat_member(message.chat.id, message.reply_to_message.from_user.id).status != 'kicked':
+                        try:
+                            self.bot.ban_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+                            self.bot.reply_to(message, "Пользователь успешно заблокирован в группе!")
+                        except ApiTelegramException:
+                            self.bot.reply_to(message, "Я не назначен администратором, чтобы выполнить это действие!")
+                    else:
+                        self.bot.reply_to(message, "Пользователь уже заблокирован в группе!")
+
+    def chat_unban(self, message):
+        if self.manager_db.is_admin(message.from_user.id, message.from_user.username):
+            if message.reply_to_message is not None:
+                if self.bot.bot_id != message.reply_to_message.from_user.id:
+                    if self.bot.get_chat_member(message.chat.id, message.reply_to_message.from_user.id).status == 'kicked':
+                        try:
+                            self.bot.unban_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+                            self.bot.reply_to(message, "Пользователь был разблокирован в группе!")
+                        except ApiTelegramException:
+                            self.bot.reply_to(message, "Я не назначен администратором, чтобы выполнить это действие!")
+                    else:
+                        self.bot.reply_to(message, "Пользователь не заблокирован в группе!")
 
     def send_no_access(self, chat_id, message_id, username, userid, keyboard=True):
         if keyboard:

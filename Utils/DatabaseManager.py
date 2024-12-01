@@ -5,6 +5,7 @@ from sqlite3 import IntegrityError
 from time import strftime, gmtime
 
 from telebot.apihelper import ApiTelegramException
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
 def get_normal_id(userid):
@@ -17,8 +18,11 @@ def get_normal_name(username):
     if type(username) is not str:
         username = ""
     else:
-        if not username.startswith("@"):
-            username = f"@{username}"
+        if username.strip() == '':
+            username = ""
+        else:
+            if not username.startswith("@"):
+                username = f"@{username}"
     return username
 
 
@@ -43,6 +47,46 @@ def get_list(online_list, isset_text, empty_text):
     else:
         return isset_text + result
 
+def get_b_online(online_list, offset):
+    if len(online_list) == 0:
+        return None
+    result = InlineKeyboardMarkup()
+    for user in online_list:
+        username = str(user[0])
+        link = ""
+        try:
+            int(username)
+        except ValueError:
+            if not username.startswith("@"):
+                link = "@"
+        prefix = user[1]
+        if type(prefix) is str and prefix.strip() != "":
+            result.add(InlineKeyboardButton(
+                link + username + " | " + prefix,
+                callback_data="getbroker_"+username+f"_{offset}"
+            ))
+        else:
+            result.add(InlineKeyboardButton(
+                link + username,
+                callback_data="getbroker_"+username+f"_{offset}"
+            ))
+    if (offset - len(online_list)) < 0:
+        offsettt = 0
+    else:
+        if len(online_list) < 8:
+            offsettt = offset - 8
+        else:
+            offsettt = offset - len(online_list)
+    result.add(InlineKeyboardButton(
+        "Назад",
+        callback_data="cancelbrokers_"+str(offsettt),
+    ),
+    InlineKeyboardButton(
+        "Далее",
+        callback_data="nextbrokers_"+str((offset + len(online_list)))
+    ))
+    return result
+
 
 def get_user(username):
     try:
@@ -60,8 +104,8 @@ def create_log(error):
             + strftime("%d.%m.%Y %H:%M:%S", gmtime())
             + f"] Произошла ошибка Telegram Bot API в файле '{os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]}' на строке {exc_tb.tb_lineno}! Функция: '{error.function_name}'. Код ошибки: '{error.error_code}'. Описание ошибки: '{error.description}'."
         )
-        print(log_text)
-        with open("/home/luckydevv/broker_bot/Errors.log", "a") as myfile:
+        directory = os.path.dirname(__file__)
+        with open(directory+"/logs/Errors.log", "a") as myfile:
             myfile.write(log_text + "\n\n")
             myfile.close()
 
@@ -69,7 +113,7 @@ def create_log(error):
 class DatabaseManager:
     def __init__(self):
         self.db = sqlite3.connect(
-            "/home/luckydevv/broker_bot/DataBase.sqlite3",
+            "../DataBase.sqlite3",
             check_same_thread=False,
         )
         self.cur = self.db.cursor()
@@ -77,7 +121,7 @@ class DatabaseManager:
             "CREATE TABLE IF NOT EXISTS `admins` (`username` TEXT PRIMARY KEY, `is_online` BOOLEAN, `prefix` TEXT);"
         )
         self.cur.execute(
-            "CREATE TABLE IF NOT EXISTS `broker` (`username` TEXT PRIMARY KEY, `is_online` BOOLEAN, `prefix` TEXT);"
+            "CREATE TABLE IF NOT EXISTS `broker` (`username` TEXT PRIMARY KEY, `is_online` BOOLEAN, `prefix` TEXT, `link` TEXT, `deals_count` INT);"
         )
         self.cur.execute(
             "CREATE TABLE IF NOT EXISTS `users` (`username` TEXT PRIMARY KEY, `chat_id` INTEGER);"
@@ -88,8 +132,22 @@ class DatabaseManager:
         self.cur.execute(
             "CREATE TABLE IF NOT EXISTS `warns` (`username` TEXT PRIMARY KEY, `reason` TEXT, `count` INTEGER);"
         )
+        self.cur.execute(
+            "CREATE TABLE IF NOT EXISTS `deals` (`deal_id` INTEGER PRIMARY KEY);"
+        )
         self.db.commit()
-        self.owner_username = "sky4arg"
+        self.owner_username = "luckydevv"
+
+    def get_userid(self, username):
+        username = self.get_normal_name(username)
+        fetch_chat = self.cur.execute(
+            "SELECT `chat_id` FROM `users` WHERE `username`=?", (username,)
+        ).fetchone()
+        if fetch_chat is not None:
+            chat_id = fetch_chat[0]
+        else:
+            chat_id = 0
+        return chat_id
 
     def log_user(self, userid, username, chat_id):
         username = get_normal_name(username)
@@ -122,14 +180,13 @@ class DatabaseManager:
             is not None
         )
 
-    def get_online_brokers(self):
+    def get_online_brokers(self, start_num):
         online = self.cur.execute(
-            "SELECT `username`,`prefix` FROM `broker` WHERE `is_online`=1"
+            "SELECT `username`,`prefix` FROM `broker` WHERE `is_online`=1 LIMIT 8 OFFSET ?", (start_num,)
         ).fetchall()
-        return get_list(
+        return get_b_online(
             online,
-            "Список гарантов онлайн:\n\n",
-            "Сейчас нет гарантов в онлайне",
+            start_num,
         )
 
     def get_all_brokers(self):
@@ -152,7 +209,7 @@ class DatabaseManager:
                 chat_id = 0
             if broker:
                 self.cur.execute(
-                    "INSERT INTO `broker` VALUES (?, FALSE, '');", (user,)
+                    "INSERT INTO `broker` VALUES (?, FALSE, '', '', 0);", (user,)
                 )
                 self.db.commit()
                 return ["yes", chat_id]
@@ -210,6 +267,69 @@ class DatabaseManager:
         else:
             return False
 
+    def set_link_broker(self, userid, username, link):
+        user = get_normal_name(username)
+        if username == "":
+            user = get_normal_id(userid)
+        if (
+            self.cur.execute(
+                "SELECT 1 FROM `broker` WHERE `username`=?", (user,)
+            ).fetchone()
+            is not None
+        ):
+            self.cur.execute(
+                f"UPDATE `broker` SET `link`=? WHERE `username`=?;",
+                (link, user),
+            )
+            self.db.commit()
+            return True
+        else:
+            return False
+
+    def get_link_broker(self, userid, username):
+        user = get_normal_name(username)
+        if username == "":
+            user = get_normal_id(userid)
+        link = self.cur.execute(
+            "SELECT `link` FROM `broker` WHERE `username`=?", (user,)
+        ).fetchone()
+        if link is not None:
+            link = str(link[0])
+            if link.strip() != '':
+                if link.startswith('t.me') or link.startswith('https://t.me') or link.startswith('@'):
+                    return link
+        return "Отсутствует"
+
+    def get_deal_broker(self, userid, username):
+        user = get_normal_name(username)
+        if username == "":
+            user = get_normal_id(userid)
+        count_deal = self.cur.execute("SELECT `deals_count` FROM `broker` WHERE `username`=?", (user,)).fetchone()
+        if count_deal is not None:
+            return count_deal[0]
+        else:
+            return 0
+
+    def add_deal_broker(self, userid, username):
+        print(username)
+        print(userid)
+        user = get_normal_name(username)
+        if username == "":
+            user = get_normal_id(userid)
+        print(user)
+        count_deals = self.cur.execute("SELECT `deals_count` FROM `broker` WHERE `username`=?", (user, )).fetchone()
+        if count_deals is not None:
+            count_deals = count_deals[0]
+            count_deals += 1
+            self.cur.execute(
+                "UPDATE `broker` SET `deals_count`=? WHERE `username`=?",
+                (count_deals, user),
+            )
+            self.db.commit()
+            return True
+        else:
+            return False
+
     def get_all_chat_id_brokers(self):
         result = []
         all_brokers = self.cur.execute(
@@ -238,14 +358,6 @@ class DatabaseManager:
                 (username, userid),
             ).fetchone()
             is not None
-        )
-
-    def get_online_admins(self):
-        online = self.cur.execute(
-            "SELECT `username`,`prefix` FROM `admins` WHERE `is_online`=1"
-        ).fetchall()
-        return get_list(
-            online, "Список админов онлайн:\n\n", "Сейчас нет админов в онлайне"
         )
 
     def get_all_admins(self):
@@ -288,26 +400,6 @@ class DatabaseManager:
                     return ["no"]
         except IntegrityError:
             return ["no"]
-
-    def set_online_admin(self, userid, username, online):
-        username = get_normal_name(username)
-        if username == "":
-            username = get_normal_id(userid)
-        fetch = self.cur.execute(
-            "SELECT `is_online` FROM `admins` WHERE `username`=?", (username,)
-        ).fetchone()
-        if fetch is not None:
-            if fetch[0] != online:
-                self.cur.execute(
-                    "UPDATE `admins` SET `is_online`=? WHERE `username`=?",
-                    (online, username),
-                )
-                self.db.commit()
-                return 0
-            else:
-                return -1
-        else:
-            return -2
 
     def set_prefix_admin(self, username, prefix):
         user = get_user(username)

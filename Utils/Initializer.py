@@ -1,8 +1,47 @@
-from os import mkdir
-from os.path import exists
+import os
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+
+def get_broker_keyboard(user_id):
+    return InlineKeyboardMarkup().add(
+        InlineKeyboardButton(
+            "Принять",
+            callback_data=f"brokeraccept_{user_id}",
+        ),
+        InlineKeyboardButton(
+            "Отклонить",
+            callback_data=f"brokerreject_{user_id}",
+        )
+    )
+
+def get_user_keyboard(broker_id):
+    return InlineKeyboardMarkup().add(
+        InlineKeyboardButton(
+            "Отменить сделку",
+            callback_data=f"canceldeal_{broker_id}",
+        )
+    )
+
+def get_deal_keyboard(chat_id, user_id):
+    return InlineKeyboardMarkup().add(
+        InlineKeyboardButton(
+            "Завершить сделку",
+            callback_data=f"enddeal_{chat_id}_{user_id}",
+        )
+    )
+
+def get_broker_deal_keyboard(broker_id, offset):
+    return InlineKeyboardMarkup().add(
+        InlineKeyboardButton(
+            "Назад",
+            callback_data=f"nextbrokers_{offset}",
+        ),
+        InlineKeyboardButton(
+            "Запросить сделку",
+            callback_data=f"requestdeal_{broker_id}",
+        )
+    )
 
 def get_keyboard(kb_type):
     if kb_type == "user":
@@ -11,7 +50,7 @@ def get_keyboard(kb_type):
                 "Список онлайн гарантов", callback_data="broker_online_list"
             ),
             InlineKeyboardButton(
-                "Список онлайн админов", callback_data="admin_online_list"
+                "Список администраторов", callback_data="admin_all_list"
             ),
         )
     elif kb_type == "broker":
@@ -22,7 +61,7 @@ def get_keyboard(kb_type):
                     "Список онлайн гарантов", callback_data="broker_online_list"
                 ),
                 InlineKeyboardButton(
-                    "Список онлайн админов", callback_data="admin_online_list"
+                    "Список администраторов", callback_data="admin_all_list"
                 ),
             )
             .add(
@@ -47,18 +86,7 @@ def get_keyboard(kb_type):
             )
             .add(
                 InlineKeyboardButton(
-                    "Список онлайн админов", callback_data="admin_online_list"
-                ),
-                InlineKeyboardButton(
-                    "Список всех админов", callback_data="admin_all_list"
-                ),
-            )
-            .add(
-                InlineKeyboardButton(
-                    "Я онлайн (Админ)", callback_data="admin_online"
-                ),
-                InlineKeyboardButton(
-                    "Я оффлайн (Админ)", callback_data="admin_offline"
+                    "Список администраторов", callback_data="admin_all_list"
                 ),
             )
         )
@@ -75,18 +103,7 @@ def get_keyboard(kb_type):
             )
             .add(
                 InlineKeyboardButton(
-                    "Список онлайн админов", callback_data="admin_online_list"
-                ),
-                InlineKeyboardButton(
-                    "Список всех админов", callback_data="admin_all_list"
-                ),
-            )
-            .add(
-                InlineKeyboardButton(
-                    "Я онлайн (Админ)", callback_data="admin_online"
-                ),
-                InlineKeyboardButton(
-                    "Я оффлайн (Админ)", callback_data="admin_offline"
+                    "Список администраторов", callback_data="admin_all_list"
                 ),
             )
             .add(
@@ -100,8 +117,9 @@ def get_keyboard(kb_type):
         )
 
 
-def create_dirs():
-    if not exists("/home/luckydevv"):
-        mkdir("/home/luckydevv")
-    if not exists("/home/luckydevv/broker_bot"):
-        mkdir("/home/luckydevv/broker_bot")
+def create_dirs(directory):
+    if not os.path.exists(directory+"/configs"):
+        os.makedirs(directory+"/configs")
+    if not os.path.exists(directory+"/logs"):
+        os.makedirs(directory+"/logs")
+
