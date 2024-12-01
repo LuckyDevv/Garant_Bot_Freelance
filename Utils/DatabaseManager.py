@@ -3,7 +3,6 @@ import sqlite3
 import sys
 from sqlite3 import IntegrityError
 from time import strftime, gmtime
-
 from telebot.apihelper import ApiTelegramException
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -105,15 +104,16 @@ def create_log(error):
             + f"] Произошла ошибка Telegram Bot API в файле '{os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]}' на строке {exc_tb.tb_lineno}! Функция: '{error.function_name}'. Код ошибки: '{error.error_code}'. Описание ошибки: '{error.description}'."
         )
         directory = os.path.dirname(__file__)
-        with open(directory+"/logs/Errors.log", "a") as myfile:
+        with open(directory+"/../logs/Errors.log", "a") as myfile:
             myfile.write(log_text + "\n\n")
             myfile.close()
 
 
 class DatabaseManager:
     def __init__(self):
+        directory = os.path.dirname(__file__)
         self.db = sqlite3.connect(
-            "../DataBase.sqlite3",
+            directory+"/../DataBase.sqlite3",
             check_same_thread=False,
         )
         self.cur = self.db.cursor()
@@ -136,7 +136,7 @@ class DatabaseManager:
             "CREATE TABLE IF NOT EXISTS `deals` (`deal_id` INTEGER PRIMARY KEY);"
         )
         self.db.commit()
-        self.owner_username = "luckydevv"
+        self.owner_username = "sky4arg"
 
     def get_userid(self, username):
         username = self.get_normal_name(username)
@@ -311,12 +311,9 @@ class DatabaseManager:
             return 0
 
     def add_deal_broker(self, userid, username):
-        print(username)
-        print(userid)
         user = get_normal_name(username)
         if username == "":
             user = get_normal_id(userid)
-        print(user)
         count_deals = self.cur.execute("SELECT `deals_count` FROM `broker` WHERE `username`=?", (user, )).fetchone()
         if count_deals is not None:
             count_deals = count_deals[0]
@@ -349,7 +346,7 @@ class DatabaseManager:
 
     def is_admin(self, userid, username=None):
         username = get_normal_name(username)
-        if self.is_owner(username):
+        if self.is_owner(username.lstrip('@')):
             return True
         userid = get_normal_id(userid)
         return (

@@ -1,3 +1,4 @@
+from telebot import types
 from telebot.apihelper import ApiTelegramException
 
 from Utils import DatabaseManager
@@ -44,7 +45,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/add_broker [id|@]`",
+                    "Вы не ввели все параметры! Использование: `/+гарант [id|@]`",
                     reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
@@ -92,7 +93,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/remove_broker [id|@]`",
+                    "Вы не ввели все параметры! Использование: `/-гарант [id|@]`",
                     reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
@@ -137,7 +138,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/add_admin [id|@]`",
+                    "Вы не ввели все параметры! Использование: `/+адм [id|@]`",
                     reply_markup=self.keyboards[3],
                     parse_mode="Markdown",
                 )
@@ -184,7 +185,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/remove_admin [id|@]`",
+                    "Вы не ввели все параметры! Использование: `/-адм [id|@]`",
                     reply_markup=self.keyboards[3],
                     parse_mode="Markdown",
                 )
@@ -256,7 +257,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/set_prefix [id|@] [prefix]`",
+                    "Вы не ввели все параметры! Использование: `/преф [id|@] [prefix]`",
                     reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
@@ -313,7 +314,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/ban [id|@] [причина]`",
+                    "Вы не ввели все параметры! Использование: `/бан [id|@] [причина]`",
                     reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
@@ -362,7 +363,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/unban [id|@]`",
+                    "Вы не ввели все параметры! Использование: `/рбан [id|@]`",
                     reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
@@ -431,7 +432,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/warn [id|@] [причина]`",
+                    "Вы не ввели все параметры! Использование: `/варн [id|@] [причина]`",
                     reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
@@ -486,7 +487,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/unwarn [id|@]`",
+                    "Вы не ввели все параметры! Использование: `/рварн [id|@]`",
                     reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
@@ -585,7 +586,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/set_link [параметры]`",
+                    "Вы не ввели все параметры! Использование: `/линк [параметры]`",
                     parse_mode="Markdown",
                 )
         else:
@@ -641,7 +642,7 @@ class CommandHandler:
         if self.manager_db.is_admin(message.from_user.id, message.from_user.username):
             if message.reply_to_message is not None:
                 if self.bot.bot_id != message.reply_to_message.from_user.id:
-                    if self.bot.get_chat_member(message.chat.id, message.reply_to_message.from_user.id).status == 'member':
+                    if self.bot.get_chat_member(message.chat.id, message.reply_to_message.from_user.id).is_member:
                         try:
                             self.bot.unban_chat_member(message.chat.id, message.reply_to_message.from_user.id)
                             self.bot.reply_to(message, "Пользователь был выгнан из группы!")
@@ -675,6 +676,63 @@ class CommandHandler:
                             self.bot.reply_to(message, "Я не назначен администратором, чтобы выполнить это действие!")
                     else:
                         self.bot.reply_to(message, "Пользователь не заблокирован в группе!")
+
+    def chat_mute(self, message):
+        if self.manager_db.is_admin(message.from_user.id, message.from_user.username):
+            if message.reply_to_message is not None:
+                if self.bot.bot_id != message.reply_to_message.from_user.id:
+                    if self.bot.get_chat_member(message.chat.id, message.reply_to_message.from_user.id).can_send_messages:
+                        try:
+                            self.bot.restrict_chat_member(
+                                message.chat.id,
+                                message.reply_to_message.from_user.id,
+                                permissions=types.ChatPermissions(can_send_messages=False)
+                            )
+                            self.bot.delete_message(
+                                message.chat.id,
+                                message.reply_to_message.id,
+                            )
+                            self.bot.send_message(
+                                message.chat.id,
+                                f"Пользователь успешно замучен!"
+                            )
+                        except ApiTelegramException:
+                            self.bot.send_message(
+                                message.chat.id,
+                                "Я не назначен администратором, чтобы выполнить это действие!"
+                            )
+                    else:
+                        self.bot.send_message(
+                            message.chat.id,
+                            "Пользователь уже находится в муте!"
+                        )
+
+    def chat_unmute(self, message):
+        if self.manager_db.is_admin(message.from_user.id, message.from_user.username):
+            if message.reply_to_message is not None:
+                if self.bot.bot_id != message.reply_to_message.from_user.id:
+                    if not self.bot.get_chat_member(message.chat.id, message.reply_to_message.from_user.id).can_send_messages:
+                        try:
+                            self.bot.restrict_chat_member(
+                                message.chat.id,
+                                message.reply_to_message.from_user.id,
+                                permissions=types.ChatPermissions(can_send_messages=True)
+                            )
+                            self.bot.send_message(
+                                message.chat.id,
+                                "Пользователь успешно размучен!"
+                            )
+                        except ApiTelegramException:
+                            self.bot.send_message(
+                                message.chat.id,
+                                "Я не назначен администратором, чтобы выполнить это действие!"
+                            )
+                    else:
+                        self.bot.send_message(
+                            message.chat.id,
+                            "Пользователь не находится в муте!"
+                        )
+
 
     def send_no_access(self, chat_id, message_id, username, userid, keyboard=True):
         if keyboard:

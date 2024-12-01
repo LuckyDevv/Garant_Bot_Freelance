@@ -11,8 +11,9 @@ from Utils import Initializer
 from Utils.QueryHandler import QueryHandler
 import atexit
 
-
-TOKEN = "7579498106:AAGbTmMeeP9JrbWTMUFIr8a6kDl9xmprQDo"  # Введите сюда токен своего Telegram-бота
+# Тестовый бот 7579498106:AAGbTmMeeP9JrbWTMUFIr8a6kDl9xmprQDo
+# Продакшн бот 7633933565:AAGn21lhUjmmZbrb7jfRIs02GRcN9e0dLLA
+TOKEN = ""  # Введите сюда токен своего Telegram-бота
 bot = telebot.TeleBot(TOKEN)
 bot.set_webhook()
 directory = os.path.dirname(__file__)
@@ -63,23 +64,25 @@ query_handler = QueryHandler(
 )
 
 commands = {
-    "/add_broker": command_handler.add_broker,
-    "/remove_broker": command_handler.remove_broker,
-    "/add_admin": command_handler.add_admin,
-    "/remove_admin": command_handler.remove_admin,
-    "/set_prefix": command_handler.set_prefix,
-    "/ban": command_handler.ban_user,
-    "/warn": command_handler.warn_user,
-    "/unban": command_handler.unban_user,
-    "/unwarn": command_handler.unwarn_user,
+    "/+гарант": command_handler.add_broker,
+    "/-гарант": command_handler.remove_broker,
+    "/+адм": command_handler.add_admin,
+    "/-адм": command_handler.remove_admin,
+    "/преф": command_handler.set_prefix,
+    "/бан": command_handler.ban_user,
+    "/рбан": command_handler.unban_user,
+    "/варн": command_handler.warn_user,
+    "/рварн": command_handler.unwarn_user,
     "/mail": command_handler.mail_send,
-    "/set_link": command_handler.set_link,
+    "/линк": command_handler.set_link,
 }
 
 chat_commands = {
-    "/ckick": command_handler.chat_kick,
-    "/cban": command_handler.chat_ban,
-    "/cunban": command_handler.chat_unban,
+    "/кик": command_handler.chat_kick,
+    "/бан": command_handler.chat_ban,
+    "/рбан": command_handler.chat_unban,
+    "/мут": command_handler.chat_mute,
+    "/рмут": command_handler.chat_unmute,
 }
 
 queries = {
@@ -91,21 +94,100 @@ queries = {
 }
 
 
+@bot.message_handler(commands=["help"])
+def help(message):
+    username = message.from_user.username
+    userid = message.from_user.id
+    if message.chat.type == 'private':
+        if database_manager.is_owner(username):
+            bot.send_message(
+                message.chat.id,
+                "Список доступных вам команд (Владелец):\n"
+                "\n`/+гарант [id|@]` - добавить гаранта"
+                "\n`/-гарант [id|@]` - удалить гаранта"
+                "\n`/+адм [id|@]` - добавить администратора"
+                "\n`/-адм [id|@]` - удалить администратора"
+                "\n`/преф [id|@] [префикс]` - установить префикс гаранту"
+                "\n`/бан [id|@] [причина]` - заблокировать пользователя в боте"
+                "\n`/рбан [id|@]` - разблокировать пользователя в боте"
+                "\n`/варн [id|@] [причина]` - выдать предупреждение в боте пользователю"
+                "\n`/рварн [id|@]` - снять предупреждение в боте пользователю"
+                "\n`/mail [сообщение]` - создать рассылку для всех гарантов"
+                "\n\nПомимо этих команд, вам доступно ещё 5 команд для администрирования групп."
+                " Для получения списка таких команд, отправьте `/help` в группе.",
+                parse_mode="Markdown",
+            )
+        elif database_manager.is_admin(userid, username):
+            bot.send_message(
+                message.chat.id,
+                "Список доступных вам команд (Администратор):\n"
+                "\n`/+гарант [id|@]` - добавить гаранта"
+                "\n`/-гарант [id|@]` - удалить гаранта"
+                "\n`/преф [id|@] [префикс]` - установить префикс гаранту"
+                "\n`/бан [id|@] [причина]` - заблокировать пользователя в боте"
+                "\n`/рбан [id|@]` - разблокировать пользователя в боте"
+                "\n`/варн [id|@] [причина]` - выдать предупреждение в боте пользователю"
+                "\n`/рварн [id|@]` - снять предупреждение в боте пользователю"
+                "\n`/mail [сообщение]` - создать рассылку для всех гарантов"
+                "\n\nПомимо этих команд, вам доступно ещё 5 команд для администрирования групп."
+                " Для получения списка таких команд, отправьте `/help` в группе.",
+                parse_mode="Markdown",
+            )
+        elif database_manager.is_broker(userid, username):
+            bot.send_message(
+                message.chat.id,
+                "Список доступных вам команд (Гарант):\n"
+                "\n`/линк [ссылка]` - установить ссылку на группу с отзывами",
+                parse_mode="Markdown",
+            )
+        else:
+            bot.send_message(
+                message.chat.id,
+                "Для вас нет доступных команд."
+            )
+    elif message.chat.type == "group" or message.chat.type == "supergroup":
+        if database_manager.is_admin(userid, username):
+            bot.send_message(
+                message.chat.id,
+                "Список доступных вам команд в группе (Администрирование):\n"
+                "\n`/кик` - выгнать пользователя из группы"
+                "\n`/бан` - заблокировать пользователя в группе"
+                "\n`/рбан` - разблокировать пользователя в группе"
+                "\n`/мут` - замутить пользователя в группе"
+                "\n`/рмут` - размутить пользователя в группе"
+                "\n\nПри использовании этих команд, вам нужно ответить "
+                "на сообщение пользователя, с которым вы хотите совершить действие",
+                parse_mode="Markdown",
+            )
+        else:
+            bot.send_message(
+                message.chat.id,
+                "Для вас нет доступных команд для администрирования группы."
+            )
+    else:
+        bot.send_message(
+            message.chat.id,
+            "Бот не может работать в каналах."
+        )
+
+
 @bot.message_handler(content_types=["text"])
 def t1(message):
     command = message.text.split()[0]
+    if command == '/help':
+        return
     if message.chat.type == "private":
         if command in commands:
             commands[command](message)
         else:
             command_handler.handle_text(message)
     elif message.chat.type == "group" or message.chat.type == "supergroup":
-        if command == '/check_group':
-            if users_groups.exists(message.from_user.id):
+        if command == '/чек':
+            if users_groups.exists(str(message.from_user.id)):
                 try:
                     link = bot.export_chat_invite_link(message.chat.id)
                     bot.send_message(
-                        users_groups.get(message.from_user.id),
+                        users_groups.get(str(message.from_user.id)),
                         f"Пользователь успешно создал группу. Пригласительная ссылка для присоединения к группе: {link}"
                             f"\n\nПосле завершения сделки нажмите кнопку «Завершить сделку»."
                             f"\nПри нажатии на кнопку бот автоматически удалит вас из группы для вашего удобства.",
@@ -116,11 +198,12 @@ def t1(message):
                         "Пожалуйста, ожидайте, пока гарант вступит в группу. Сделка начнётся автоматически.",
                         disable_web_page_preview=True
                     )
-                    users_groups.remove(message.from_user.id)
+                    users_groups.remove(str(message.from_user.id))
                     users_groups.save()
-                    users_deal.set(message.from_user.id)
+                    users_deal.set(str(message.from_user.id))
                     users_deal.save()
-                except ApiTelegramException:
+                except ApiTelegramException as e:
+                    print(e)
                     bot.send_message(message.chat.id, "Вы должны назначить меня администратором!")
         else:
             if command in chat_commands:
@@ -169,7 +252,7 @@ def q1(call):
                     "Нельзя запрашивать сделку у самого себя!"
                 )
                 return
-            if not users_ttd.exists(userid):
+            if not users_ttd.exists(str(userid)):
                 command_handler.send_keyboard(
                     None,
                     call.message.id,
@@ -221,7 +304,7 @@ def q1(call):
                         "\n\nТеперь самостоятельно создайте группу для проведения сделки."
                         "В названии группы не должно быть нецензурной лексики и оскорбительных фраз."
                         "\n\nПосле создания группы добавьте в неё второго участника и этого бота."
-                        "\n\nПосле добавления назначьте бота администратором и введите команду `/check_group` в этой группе."
+                        "\n\nПосле добавления назначьте бота администратором и введите команду `/чек` в этой группе."
                         "\n\nБот автоматически проверит группу и отправит гаранту пригласительную ссылку."
                         "\n\n\nЕсли вы передумали проводить сделку, нажмите кнопку «Отменить сделку».",
                         reply_markup=Initializer.get_user_keyboard(
@@ -229,13 +312,13 @@ def q1(call):
                         ),
                         parse_mode="Markdown",
                     )
-                    users_groups.set(user_id, call.message.chat.id)
+                    users_groups.set(str(user_id), call.message.chat.id)
                     users_groups.save()
         elif datal[0] == "brokerreject":
             bot.answer_callback_query(call.id)
             if len(datal) == 2:
                 user_id = int(datal[1])
-                if users_deal.exists(userid):
+                if users_deal.exists(str(userid)):
                     if database_manager.is_broker(userid, username):
                         bot.send_message(
                             user_id,
@@ -249,20 +332,20 @@ def q1(call):
                         )
         elif datal[0] == "canceldeal":
             bot.answer_callback_query(call.id)
-            if users_groups.exists(call.message.chat.id):
+            if users_groups.exists(str(call.message.chat.id)):
                 if len(datal) == 2:
                     broker_id = int(datal[1])
                     bot.send_message(
                         call.message.chat.id, "Вы успешно отменили сделку."
                     )
                     bot.send_message(broker_id, "Пользователь отменил сделку.")
-                    users_groups.remove(call.message.chat.id)
+                    users_groups.remove(str(call.message.chat.id))
                     users_groups.save()
         elif datal[0] == "enddeal":
             bot.answer_callback_query(call.id)
             if len(datal) == 3:
                 userid = int(datal[2])
-                if users_deal.exists(userid):
+                if users_deal.exists(str(userid)):
                     database_manager.add_deal_broker(call.from_user.id, call.from_user.username)
                     try:
                         bot.send_message(call.message.chat.id,
@@ -275,9 +358,9 @@ def q1(call):
                         bot.leave_chat(int(datal[1]))
                     except ApiTelegramException:
                         pass
-                    users_deal.remove(userid)
+                    users_deal.remove(str(userid))
                     users_deal.save()
-                    users_ttd.remove(userid)
+                    users_ttd.remove(str(userid))
                     users_ttd.save()
 
 
@@ -293,7 +376,8 @@ def send_broker_msg(message, broker_id):
             message.chat.id,
             "Сообщение успешно доставлено гаранту! Ожидайте ответа...",
         )
-        users_ttd.set(message.chat.id)
+        users_ttd.set(str(message.chat.id))
+        users_ttd.save()
         threading.Timer(300, flush_userid, (message.chat.id,)).start()
     except ApiTelegramException:
         bot.send_message(
@@ -303,7 +387,7 @@ def send_broker_msg(message, broker_id):
 
 
 def create_deal_group(message, broker_name):
-    if users_deal.exists(message.chat.id):
+    if users_deal.exists(str(message.chat.id)):
         broker_name = broker_name[0]
         broker_id = database_manager.get_userid(broker_name)
         if str(message.text).startswith('@'):
