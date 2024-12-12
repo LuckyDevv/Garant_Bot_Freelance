@@ -13,7 +13,7 @@ import atexit
 
 # Тестовый бот 7579498106:AAGbTmMeeP9JrbWTMUFIr8a6kDl9xmprQDo
 # Продакшн бот 7633933565:AAGn21lhUjmmZbrb7jfRIs02GRcN9e0dLLA
-TOKEN = ""  # Введите сюда токен своего Telegram-бота
+TOKEN = "7633933565:AAGn21lhUjmmZbrb7jfRIs02GRcN9e0dLLA"  # Введите сюда токен своего Telegram-бота
 bot = telebot.TeleBot(TOKEN)
 bot.set_webhook()
 directory = os.path.dirname(__file__)
@@ -64,10 +64,10 @@ query_handler = QueryHandler(
 )
 
 commands = {
-    "/+гарант": command_handler.add_broker,
-    "/-гарант": command_handler.remove_broker,
-    "/+адм": command_handler.add_admin,
-    "/-адм": command_handler.remove_admin,
+    "+гарант": command_handler.add_broker,
+    "-гарант": command_handler.remove_broker,
+    "+адм": command_handler.add_admin,
+    "-адм": command_handler.remove_admin,
     "/преф": command_handler.set_prefix,
     "/бан": command_handler.ban_user,
     "/рбан": command_handler.unban_user,
@@ -182,6 +182,7 @@ def t1(message):
         else:
             command_handler.handle_text(message)
     elif message.chat.type == "group" or message.chat.type == "supergroup":
+        print(message.chat.id)
         if command == '/чек':
             if users_groups.exists(str(message.from_user.id)):
                 try:
@@ -294,9 +295,9 @@ def q1(call):
                         None,
                         call.message.id,
                         call.message.chat.id,
-                        "Вы успешно приняли обращение от пользователя. "
+                        f"Вы успешно приняли обращение от пользователя (tg://user?id={user_id}). "
                         "Ожидайте, пока пользователь самостоятельно создаст группу и добавит туда бота. "
-                        "После этого вам будет отправлена пригласительная ссылка в эту группу."
+                        "После этого вам будет отправлена пригласительная ссылка в эту группу.",
                     )
                     bot.send_message(
                         user_id,
@@ -312,13 +313,18 @@ def q1(call):
                         ),
                         parse_mode="Markdown",
                     )
+                    try:
+                        users_ttd.remove(str(user_id))
+                        users_ttd.save()
+                    except ValueError:
+                        pass
                     users_groups.set(str(user_id), call.message.chat.id)
                     users_groups.save()
         elif datal[0] == "brokerreject":
             bot.answer_callback_query(call.id)
             if len(datal) == 2:
                 user_id = int(datal[1])
-                if users_deal.exists(str(userid)):
+                if users_ttd.exists(str(user_id)):
                     if database_manager.is_broker(userid, username):
                         bot.send_message(
                             user_id,
@@ -330,6 +336,29 @@ def q1(call):
                             call.message.chat.id,
                             "Вы успешно отклонили обращение от пользователя."
                         )
+                        users_ttd.remove(str(user_id))
+                        users_ttd.save()
+                    else:
+                        command_handler.send_keyboard(
+                            None,
+                            call.message.id,
+                            call.message.chat.id,
+                            "Вы не являетесь гарантом!"
+                        )
+                else:
+                    command_handler.send_keyboard(
+                        None,
+                        call.message.id,
+                        call.message.chat.id,
+                        "Пользователь отменил запрос"
+                    )
+            else:
+                command_handler.send_keyboard(
+                    None,
+                    call.message.id,
+                    call.message.chat.id,
+                    "Произошла ошибка Telegram-запроса"
+                )
         elif datal[0] == "canceldeal":
             bot.answer_callback_query(call.id)
             if users_groups.exists(str(call.message.chat.id)):
@@ -367,11 +396,19 @@ def q1(call):
 def send_broker_msg(message, broker_id):
     broker_id = database_manager.get_userid(broker_id)
     try:
+        username = message.from_user.username
+        userid = message.from_user.id
+        if username is None:
+            user = f"tg://user?id={userid}"
+        else:
+            user = f"@{username}"
         bot.send_message(
             broker_id,
-            f"Поступило новое обращение от потенциального клиента:\n\n«{message.text}»\n\nЧтобы принять обращение, нажмите «Принять», чтобы отклонить — «Отклонить».",
+            f"Поступило новое обращение от потенциального клиента ({user}):\n\n«{message.text}»\n\nЧтобы принять обращение, нажмите «Принять», чтобы отклонить — «Отклонить».",
             reply_markup=Initializer.get_broker_keyboard(message.chat.id),
+            parse_mode="HTML",
         )
+        print(user)
         bot.send_message(
             message.chat.id,
             "Сообщение успешно доставлено гаранту! Ожидайте ответа...",

@@ -27,6 +27,7 @@ def get_normal_name(username):
 
 def get_list(online_list, isset_text, empty_text):
     result = ""
+    priority_result = ""
     for user in online_list:
         username = str(user[0])
         link = ""
@@ -38,13 +39,23 @@ def get_list(online_list, isset_text, empty_text):
                 link = "@"
         prefix = user[1]
         if type(prefix) is str and prefix.strip() != "":
-            result += link + username + " | " + prefix + "\n"
+            if prefix == "Владелец":
+                if priority_result == "":
+                    priority_result += link + username + " | " + prefix + "\n"
+                else:
+                    priority_result = link + username + " | " + prefix + "\n" + priority_result
+                continue
+            elif prefix == "Со-Владелец":
+                priority_result += link + username + " | " + prefix + "\n"
+                continue
+            else:
+                result += link + username + " | " + prefix + "\n"
         else:
             result += link + username + "\n"
     if result == "":
         return empty_text
     else:
-        return isset_text + result
+        return isset_text + priority_result + result
 
 def get_b_online(online_list, offset):
     if len(online_list) == 0:
@@ -342,6 +353,19 @@ class DatabaseManager:
                 and type(chat_id[0]) == int
             ):
                 result.append(chat_id[0])
+        return result
+
+    def get_all_chat_id_users(self):
+        result = []
+        chat_ids = self.cur.execute(
+            "SELECT `chat_id` FROM `users`"
+        ).fetchall()
+        for chat_id in chat_ids:
+            if chat_id is not None:
+                if type(chat_id) == tuple or type(chat_id) is dict:
+                    result.append(chat_id[0])
+                else:
+                    result.append(chat_id[0])
         return result
 
     def is_admin(self, userid, username=None):

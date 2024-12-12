@@ -161,16 +161,11 @@ class QueryHandler:
 
     def admin_all_list(self, call, userid, username):
         self.bot.answer_callback_query(call.id)
-        if self.manager_db.is_admin(userid, username):
-            self.send_keyboard(
-                self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
+        self.send_keyboard(
+                self.keyboards[3] if self.manager_db.is_owner(username) else (self.keyboards[2] if self.manager_db.is_admin(userid, username) else (self.keyboards[1] if self.manager_db.is_broker(userid, username) else self.keyboards[0])),
                 call.message.message_id,
                 call.message.chat.id,
                 self.manager_db.get_all_admins(),
-            )
-        else:
-            self.send_no_access(
-                call.message.chat.id, call.message.message_id, username, userid
             )
 
     def send_keyboard(self, keyboard, message_id, chat_id, text, iscancel=False):

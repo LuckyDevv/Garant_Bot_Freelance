@@ -31,8 +31,10 @@ class CommandHandler:
                     try:
                         self.bot.send_message(
                             result[1],
-                            "Вас назначили на должность гаранта!",
+                            "Вас назначили на должность гаранта!\n\n"
+                            "Вот ссылка-приглашение в чат гарантов: https://t.me/+VfNF4q0ptG0xMWM1",
                             reply_markup=self.keyboards[1],
+                            disable_web_page_preview=True
                         )
                     except ApiTelegramException as e:
                         DatabaseManager.create_log(e)
@@ -257,7 +259,7 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/преф [id|@] [prefix]`",
+                    "Вы не ввели все параметры! Использование: `/преф [0|1] [id|@] [prefix]`, где 0 - префикс для гарантов, а 1 - для администраторов",
                     reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     parse_mode="Markdown",
                 )
@@ -293,6 +295,11 @@ class CommandHandler:
                         message.chat.id,
                         f'Вы успешно заблокировали пользователя {self.manager_db.get_user_tgname(user)} по причине "{reason}"!',
                         reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
+                    )
+                    self.send_log(
+                        f"заблокировал пользователя {self.manager_db.get_user_tgname(user)}",
+                        username,
+                        userid
                     )
                     try:
                         if type(username) != str:
@@ -342,6 +349,11 @@ class CommandHandler:
                         message.chat.id,
                         f"Вы успешно разблокировали пользователя {self.manager_db.get_user_tgname(user)}!",
                         reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
+                    )
+                    self.send_log(
+                        f"разблокировал пользователя {self.manager_db.get_user_tgname(user)}",
+                        username,
+                        userid
                     )
                     try:
                         if type(username) != str:
@@ -414,6 +426,11 @@ class CommandHandler:
                         text_send_user += "\n\nЕсли вы получите 3 из 3 предупреждений, то будете заблокированы в боте!"
                     elif result[0] == "ban":
                         text_send_user += "\n\nПоскольку вы получили 3 из 3 предупреждений, вы были заблокированы в боте!"
+                    self.send_log(
+                        f"выдал предупреждение пользователю {self.manager_db.get_user_tgname(user)}",
+                        username,
+                        userid
+                    )
                     try:
                         self.bot.send_message(
                             result[2], text_send_user, parse_mode="Markdown"
@@ -467,6 +484,11 @@ class CommandHandler:
                         f"Предупреждение с пользователя {self.manager_db.get_user_tgname(user)} успешно снято! Теперь у него {result[2]}/3 предупреждений!",
                         reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
                     )
+                    self.send_log(
+                        f"снял предупреждение с пользователя {self.manager_db.get_user_tgname(user)}",
+                        username,
+                        userid
+                    )
                     try:
                         if type(username) != str:
                             username_2 = f"tg://user?id={userid}"
@@ -511,9 +533,20 @@ class CommandHandler:
             username_2 = f"tg://user?id={userid_2}"
         if self.manager_db.is_admin(userid, username):
             text = str(message.text).split(" ")
-            if len(text) >= 2:
-                text = " ".join(text[1:]).strip()
-                chat_ids = self.manager_db.get_all_chat_id_brokers()
+            if len(text) >= 3:
+                argument = text[1]
+                if argument == '0':
+                    chat_ids = self.manager_db.get_all_chat_id_brokers()
+                elif argument == '1':
+                    chat_ids = self.manager_db.get_all_chat_id_users()
+                else:
+                    self.bot.send_message(
+                        userid,
+                        "Вы ввели неверный агрумент рассылки! Используйте `/mail [0|1] [текст]`,"
+                        "где 0 - рассылка гарантов, а 1 - всем пользователям бота"
+                    )
+                    return
+                text = " ".join(text[2:]).strip()
                 length = len(chat_ids)
                 if length > 0:
                     count = 0
@@ -532,7 +565,7 @@ class CommandHandler:
                             DatabaseManager.create_log(e)
                     if count == 0:
                         text_send = (
-                            "Не удалось отправить сообщение ни одному гаранту!"
+                            "Не удалось отправить сообщение ни одному пользователю!"
                         )
                     else:
                         text_send = f"Сообщение успешно разослано в {count}/{length} чатов!"
@@ -550,8 +583,10 @@ class CommandHandler:
             else:
                 self.bot.send_message(
                     message.chat.id,
-                    "Вы не ввели все параметры! Использование: `/mail [текст]`",
+                    "Вы не ввели все параметры! Использование: `/mail [0|1] [текст]`,"
+                    " где 0 - рассылка гарантам, а 1 - пользователям чата",
                     reply_markup=self.keyboards[3] if self.manager_db.is_broker(userid, username) else self.keyboards[2],
+                    parse_mode="Markdown",
                 )
         else:
             self.send_no_access(
@@ -598,7 +633,6 @@ class CommandHandler:
                 True,
             )
 
-
     def handle_text(self, message):
         userid = message.from_user.id
         username = message.from_user.username
@@ -631,7 +665,8 @@ class CommandHandler:
                 message_id=message_id,
                 text=text,
                 reply_markup=keyboard,
-                disable_web_page_preview=True
+                disable_web_page_preview=True,
+                parse_mode='HTML'
             )
         except ApiTelegramException as e:
             DatabaseManager.create_log(e)
@@ -733,6 +768,20 @@ class CommandHandler:
                             "Пользователь не находится в муте!"
                         )
 
+    def send_log(self, text, username, userid):
+        if username is None:
+            link = f"tg://user?id={userid}"
+        else:
+            link = f"@{username}"
+        try:
+            self.bot.send_message(
+                -1002447232743,
+                f"Администратор ({link}) {text}",
+                parse_mode="Markdown",
+                disable_web_page_preview=True,
+            )
+        except ApiTelegramException as e:
+            DatabaseManager.create_log(e)
 
     def send_no_access(self, chat_id, message_id, username, userid, keyboard=True):
         if keyboard:
