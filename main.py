@@ -11,9 +11,7 @@ from Utils import Initializer
 from Utils.QueryHandler import QueryHandler
 import atexit
 
-# Тестовый бот 7579498106:AAGbTmMeeP9JrbWTMUFIr8a6kDl9xmprQDo
-# Продакшн бот 7633933565:AAGn21lhUjmmZbrb7jfRIs02GRcN9e0dLLA
-TOKEN = "7633933565:AAGn21lhUjmmZbrb7jfRIs02GRcN9e0dLLA"  # Введите сюда токен своего Telegram-бота
+TOKEN = ""  # Введите сюда токен своего Telegram-бота
 bot = telebot.TeleBot(TOKEN)
 bot.set_webhook()
 directory = os.path.dirname(__file__)
